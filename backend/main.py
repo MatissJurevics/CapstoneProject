@@ -1,55 +1,48 @@
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-
-
-# model_path = "./models/pose_landmarker_full.task"
-
-# BaseOptions = mp.tasks.BaseOptions
-# PoseLandmarker = mp.tasks.vision.PoseLandmarker
-# PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
-# PoseLandmarkerResult = mp.tasks.vision.PoseLandmarkerResult
-# VisionRunningMode = mp.tasks.vision.RunningMode
-
-# # Create a pose landmarker instance with the live stream mode:
-# def print_result(result: PoseLandmarkerResult, output_image: mp.Image, timestamp_ms: int):
-#     print('pose landmarker result: {}'.format(result))
-
-# options = PoseLandmarkerOptions(
-#     base_options=BaseOptions(model_asset_path=model_path),
-#     running_mode=VisionRunningMode.LIVE_STREAM,
-#     result_callback=print_result)
-
-# with PoseLandmarker.create_from_options(options) as landmarker:
-#   # The landmarker is initialized. Use it here.
-#   # ...
-
 import cv2
+import mediapipe as mp
+import csv
 
-# Open a connection to the webcam
-cap = cv2.VideoCapture(0)  # Use 0 for the primary webcam
+def write_landmarks_to_csv(landmarks, frame_number, csv_data):
+    print(f"Landmark coordinates for frame {frame_number}:")
+    for idx, landmark in enumerate(landmarks):
+        print(f"{mp_pose.PoseLandmark(idx).name}: (x: {landmark.x}, y: {landmark.y}, z: {landmark.z})")
+        csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
+    print("\n")
+    
+# Initialize MediaPipe Pose and Drawing utilities
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
+pose = mp_pose.Pose()
 
-# Check if the webcam is opened correctly
-if not cap.isOpened():
-    print("Cannot open camera")
-    exit()
+# Open the video file
+cap = cv2.VideoCapture(0)
 
-while True:
-    # Capture frame-by-frame
+frame_number = 0
+csv_data = []
+
+while cap.isOpened():
     ret, frame = cap.read()
-
-    # If frame is read correctly, ret will be True
     if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
         break
 
-    # Display the resulting frame
-    cv2.imshow('Live Webcam Feed', frame)
+    # Convert the frame to RGB
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Press 'q' to exit the live feed window
-    if cv2.waitKey(1) == ord('q'):
-        break
+    # Process the frame with MediaPipe Pose
+    result = pose.process(frame_rgb)
 
-# Release the capture when done
-cap.release()
-cv2.destroyAllWindows()
+    # Draw the pose landmarks on the frame
+    if result.pose_landmarks:
+        mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+        # Add the landmark coordinates to the list and print them
+        write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data)
+
+    # Display the frame
+    cv2.imshow('MediaPipe Pose', frame)
+
+    # Exit if 'q' keypyt
+    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+            break
+
+    
