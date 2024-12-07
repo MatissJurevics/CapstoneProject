@@ -15,7 +15,7 @@ mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose()
 
 # Open the video file
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture()
 
 frame_number = 0
 csv_data = []
